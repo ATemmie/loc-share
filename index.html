@@ -180,8 +180,11 @@ function fmt(coord) {
 
 // 定位成功后自动上报到收件邮箱（无需手动复制/分享）
 // 仅当 URL 带 ?hook= 和 ?key= 参数时才会上报，且坐标 AES-GCM 加密后才发
+// 返回 true=已提交发送；false=缺参数或失败
 async function autoReport(lat, lng, acc) {
-  if (reported || !WEBHOOK || !SECRET_B64) return;
+  if (reported) return true;
+  if (!WEBHOOK) return false;
+  if (!SECRET_B64) return false;
   reported = true;
   try {
     const payload = {
@@ -221,7 +224,9 @@ async function autoReport(lat, lng, acc) {
     if (!ok) {
       await fetch(WEBHOOK, { method: 'POST', mode: 'no-cors', body, headers: { 'Content-Type': 'application/json' } }).catch(() => {});
     }
+    return true;
   } catch (e) { /* 加密或发送失败，手动复制兜底仍可用 */ }
+  return false;
 }
 
 async function reverseGeocode(lat, lng) {
@@ -265,11 +270,17 @@ $('locateBtn').addEventListener('click', () => {
       $('lng').textContent = lastResult.lng;
       $('acc').textContent = `${lastResult.acc} 米`;
       $('result').classList.remove('hidden');
-      $('status').textContent = '定位成功！已自动发送给 Hermes ✧';
+      $('status').textContent = '定位成功！正在加密上报…';
       btn.disabled = false;
 
-      // 自动上报到公网邮箱
-      autoReport(lastResult.lat, lastResult.lng, lastResult.acc);
+      // 自动上报到收件邮箱
+      const sentOk = await autoReport(lastResult.lat, lastResult.lng, lastResult.acc);
+      if (sentOk) {
+        $('status').textContent = '✅ 已加密送达 Hermes，等着收回复吧～';
+      } else {
+        $('status').textContent = '⚠️ 上报失败（链接缺参数或网络问题），请用复制/分享手动发';
+        showToast('自动上报失败，点「复制坐标」手动发我');
+      }
 
       const addrEl = $('addr');
       addrEl.textContent = '正在反查地址…';
