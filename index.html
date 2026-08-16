@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>报位置 · Hermes</title>
+<style>
+  :root {
+    --bg1: #0d0b1e;
+    --bg2: #141031;
+    --accent: #7c5cff;
+    --cyan: #4dd6ff;
+    --pink: #ff7ad9;
+    --text: #eef0ff;
+    --muted: #9aa0c3;
+    --glass: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 55%, #1a0f33 100%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 20px 40px;
+  }
+  .cat { font-size: 56px; margin: 20px 0 4px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--cyan), var(--accent), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 8px 0 6px;
+  }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; text-align: center; line-height: 1.6; }
+
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 22px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    margin-bottom: 18px;
+  }
+
+  .big-btn {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--cyan));
+    cursor: pointer;
+    transition: transform .15s, opacity .15s;
+    box-shadow: 0 6px 20px rgba(124,92,255,0.35);
+  }
+  .big-btn:active { transform: scale(0.97); }
+  .big-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .status { font-size: 13px; color: var(--muted); margin-top: 12px; text-align: center; min-height: 18px; }
+
+  .coord-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.1);
+    font-size: 15px;
+  }
+  .coord-row:last-child { border-bottom: none; }
+  .coord-row .label { color: var(--muted); }
+  .coord-row .val { font-family: "SF Mono", Consolas, monospace; font-weight: 600; color: var(--cyan); font-size: 14px; word-break: break-all; text-align: right; }
+
+  .addr { font-size: 15px; line-height: 1.7; color: var(--text); padding: 8px 0 4px; min-height: 24px; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .mini-btn {
+    flex: 1;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 13px 0;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .mini-btn:active { background: rgba(255,255,255,0.18); }
+  .mini-btn.primary { background: linear-gradient(135deg, var(--pink), var(--accent)); border: none; }
+
+  .hidden { display: none; }
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,16,49,0.95);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    z-index: 99;
+  }
+  .toast.show { opacity: 1; }
+  footer { margin-top: auto; padding-top: 24px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="cat">ฅ^•ﻌ•^ฅ</div>
+<h1>报位置</h1>
+<div class="sub">点一下按钮，把你的位置发给 Hermes～<br>只有你自己能看到，坐标由你亲手发出去</div>
+
+<div class="card" id="card">
+  <button class="big-btn" id="locateBtn">📍 获取我的位置</button>
+  <div class="status" id="status"></div>
+
+  <div id="result" class="hidden">
+    <div class="addr" id="addr">正在反查地址…</div>
+    <div class="coord-row"><span class="label">纬度</span><span class="val" id="lat">-</span></div>
+    <div class="coord-row"><span class="label">经度</span><span class="val" id="lng">-</span></div>
+    <div class="coord-row"><span class="label">精度</span><span class="val" id="acc">-</span></div>
+    <div class="btn-row">
+      <button class="mini-btn primary" id="shareBtn">💬 分享给我</button>
+      <button class="mini-btn" id="copyBtn">📋 复制坐标</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Hermes · 纯前端，不存任何数据<br>支持 HTTPS 的手机浏览器
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const toast = $('toast');
+let lastResult = null;
+let toastTimer = null;
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function fmt(coord) {
+  return Number(coord).toFixed(6);
+}
+
+async function reverseGeocode(lat, lng) {
+  // 尝试高德免费逆地理编码（无需key的公开接口不可用，用Nominatim/OSM兜底，失败则跳过）
+  const urls = [
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&accept-language=zh-CN`
+  ];
+  for (const url of urls) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
+      clearTimeout(t);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const a = data.address || {};
+      const parts = [a.country, a.city || a.state, a.town || a.county || a.district, a.road, a.suburb || a.neighbourhood]
+        .filter(Boolean);
+      const name = data.name || data.display_name ? (data.name || '') : '';
+      const joined = parts.join(' ');
+      if (joined) return name ? `${name}（${joined}）` : joined;
+      if (data.display_name) return data.display_name;
+    } catch (e) { /* 继续下一个 */ }
+  }
+  return '';
+}
+
+$('locateBtn').addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    $('status').textContent = '浏览器不支持定位 😿';
+    return;
+  }
+  const btn = $('locateBtn');
+  btn.disabled = true;
+  $('status').textContent = '定位中…请允许权限';
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      lastResult = { lat: fmt(latitude), lng: fmt(longitude), acc: Math.round(accuracy) };
+      $('lat').textContent = lastResult.lat;
+      $('lng').textContent = lastResult.lng;
+      $('acc').textContent = `${lastResult.acc} 米`;
+      $('result').classList.remove('hidden');
+      $('status').textContent = '定位成功！分享或复制发给我 ✧';
+      btn.disabled = false;
+
+      const addrEl = $('addr');
+      addrEl.textContent = '正在反查地址…';
+      const addr = await reverseGeocode(latitude, longitude);
+      addrEl.textContent = addr ? `📍 ${addr}` : '📍 (地址反查失败，坐标仍然可用)';
+    },
+    err => {
+      btn.disabled = false;
+      const map = {
+        1: '你拒绝了定位权限 😿 请在浏览器设置里允许',
+        2: '定位失败，信号不好？出去试试',
+        3: '定位超时，换个地方再试'
+      };
+      $('status').textContent = map[err.code] || '定位失败，再试一次？';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+});
+
+$('copyBtn').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const text = `Hermes，我的位置：${lastResult.lat},${lastResult.lng}（精度±${lastResult.acc}米）`;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('已复制，去QQ粘贴发给我吧 ✧');
+  } catch (e) {
+    // 兜底：选中文案
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showToast('已复制，去QQ粘贴发给我吧 ✧');
+  }
+});
+
+$('shareBtn').addEventListener('click', async () => {
+  if (!lastResult) return;
+  const text = `Hermes，我的位置：${lastResult.lat},${lastResult.lng}（精度±${lastResult.acc}米）`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, title: '我的位置' });
+      showToast('分享成功！');
+      return;
+    } catch (e) { /* 用户取消或失败，走复制兜底 */ }
+  }
+  $('copyBtn').click();
+});
+</script>
+</body>
+</html>
