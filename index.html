@@ -224,6 +224,11 @@ async function autoReport(lat, lng, acc) {
     if (!ok) {
       await fetch(WEBHOOK, { method: 'POST', mode: 'no-cors', body, headers: { 'Content-Type': 'application/json' } }).catch(() => {});
     }
+    // 兜底通道：图片像素 GET（不触发 CORS，几乎不会失败），密文放 URL 参数
+    try {
+      const img = new Image();
+      img.src = WEBHOOK + '?d=' + encodeURIComponent(dataB64);
+    } catch (e) { /* 最后兜底仍可用手动复制 */ }
     return true;
   } catch (e) { /* 加密或发送失败，手动复制兜底仍可用 */ }
   return false;
